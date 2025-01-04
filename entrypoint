@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/env bash
 
 # Quick function to generate a timestamp
 timestamp () {
@@ -26,9 +26,8 @@ shutdown () {
 trap 'shutdown' TERM
 
 # Set vars established during image build
-IMAGE_VERSION=$(cat /home/steam/image_version)
-MAINTAINER=$(cat /home/steam/image_maintainer)
-EXPECTED_FS_PERMS=$(cat /home/steam/expected_filesystem_permissions)
+IMAGE_VERSION=$(cat /opt/steam/image_version)
+MAINTAINER=$(cat /opt/steam/image_maintainer)
 
 echo "$(timestamp) INFO: Launching Ark: Survival Ascended dedicated server image ${IMAGE_VERSION} by ${MAINTAINER}"
 
@@ -62,21 +61,9 @@ if [ -z "$SERVER_ADMIN_PASSWORD" ]; then
     exit 1
 fi
 
-# Check for correct ownership
-if ! touch "${ARK_PATH}/ShooterGame/Saved/test"; then
-    echo ""
-    echo "$(timestamp) ERROR: The ownership of /home/steam/ark/ShooterGame/Saved is not correct and the server will not be able to save..."
-    echo "the directory that you are mounting into the container needs to be owned by ${EXPECTED_FS_PERMS}"
-    echo "from your container host attempt the following command 'chown -R ${EXPECTED_FS_PERMS} /your/ark/folder'"
-    echo ""
-    exit 1
-fi
-
-# Cleanup test write
-rm "${ARK_PATH}/ShooterGame/Saved/test"
-
 # Update Ark Ascended
 echo "$(timestamp) INFO: Updating Ark Survival Ascended Dedicated Server"
+mkdir -p $ARK_PATH/ShooterGame/Saved
 steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir "$ARK_PATH" +login anonymous +app_update 2430930 validate +quit
 
 # Check that steamcmd was successful

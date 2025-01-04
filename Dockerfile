@@ -1,23 +1,18 @@
 FROM debian:12-slim
 
-ARG IMAGE_VERSION="v1.0.0-devel"
-ARG MAINTAINER="https://github.com/jsknnr/ark-ascended-server"
-
-ARG CONTAINER_GID=10000
-ARG CONTAINER_UID=10000
 
 ENV DEBIAN_FRONTEND "noninteractive"
 ENV STEAM_APP_ID "2430930"
-ENV HOME "/home/steam"
-ENV STEAM_PATH "/home/steam/Steam"
-ENV ARK_PATH "/home/steam/ark"
+ENV HOME "/opt/steam"
+ENV STEAM_PATH "/opt/steam/Steam"
+ENV ARK_PATH "/opt/steam/ark"
 ENV GE_PROTON_VERSION "8-30"
 ENV GE_PROTON_URL "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton${GE_PROTON_VERSION}/GE-Proton${GE_PROTON_VERSION}.tar.gz"
 ENV STEAM_COMPAT_CLIENT_INSTALL_PATH "${STEAM_PATH}"
 ENV STEAM_COMPAT_DATA_PATH "${STEAM_PATH}/steamapps/compatdata/${STEAM_APP_ID}"
 
-RUN groupadd -g $CONTAINER_GID steam \
-    && useradd -g $CONTAINER_GID -u $CONTAINER_UID -m steam \
+RUN \
+    useradd -m steam \
     && sed -i 's#^Components: .*#Components: main non-free contrib#g' /etc/apt/sources.list.d/debian.sources \
     && echo steam steam/question select "I AGREE" | debconf-set-selections \
     && echo steam steam/license note '' | debconf-set-selections \
@@ -47,11 +42,13 @@ RUN groupadd -g $CONTAINER_GID steam \
     && rm -rf ./rcon-0.10.3-amd64_linux \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
-    && apt-get autoremove -y
+    && apt-get autoremove -y \
+    && mkdir -p /opt/steam \
+    && chown steam:steam /opt/steam
 
 USER steam
 
-RUN mkdir "$ARK_PATH" \
+RUN mkdir -p "$ARK_PATH" \
     && mkdir -p "${ARK_PATH}/ShooterGame/Saved" \
     && mkdir -p "${STEAM_PATH}/compatibilitytools.d" \
     && mkdir -p "${STEAM_PATH}/steamapps/compatdata/${STEAM_APP_ID}" \
@@ -61,15 +58,12 @@ RUN mkdir "$ARK_PATH" \
     && ln -s "${HOME}/.local/share/Steam/steamcmd/linux64" "${HOME}/.steam/sdk64" \
     && ln -s "${HOME}/.steam/sdk32/steamclient.so" "${HOME}/.steam/sdk32/steamservice.so" \
     && ln -s "${HOME}/.steam/sdk64/steamclient.so" "${HOME}/.steam/sdk64/steamservice.so" \
-    && wget "$GE_PROTON_URL" -O "/home/steam/GE-Proton${GE_PROTON_VERSION}.tgz" \
-    && tar -x -C "${STEAM_PATH}/compatibilitytools.d/" -f "/home/steam/GE-Proton${GE_PROTON_VERSION}.tgz" \
-    && rm "/home/steam/GE-Proton${GE_PROTON_VERSION}.tgz" \
-    && echo "${IMAGE_VERSION}" > /home/steam/image_version \
-    && echo "${MAINTAINER}" > /home/steam/image_maintainer \
-    && echo "${CONTAINER_UID}:${CONTAINER_GID}" > /home/steam/expected_filesystem_permissions
+    && wget "$GE_PROTON_URL" -O "/opt/steam/GE-Proton${GE_PROTON_VERSION}.tgz" \
+    && tar -x -C "${STEAM_PATH}/compatibilitytools.d/" -f "/opt/steam/GE-Proton${GE_PROTON_VERSION}.tgz" \
+    && rm "/opt/steam/GE-Proton${GE_PROTON_VERSION}.tgz"   
     
-COPY entrypoint.sh /home/steam/entrypoint.sh
+ADD entrypoint /opt/steam/entrypoint
 
-WORKDIR /home/steam
+WORKDIR /opt/steam
 
-CMD ["/home/steam/entrypoint.sh"]
+CMD ["/opt/steam/entrypoint"]
